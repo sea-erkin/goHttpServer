@@ -1,5 +1,5 @@
 # goHttpServer
-Slightly more complex than the simpleHttpServer with added https redirect and logging capabilities.
+Slightly less simple than the simpleHttpServer with added https redirect and logging capabilities.
 Supports logging directly to JSON.
 
 
