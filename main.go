@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 var (
@@ -23,6 +24,7 @@ var (
 	certChainPathFlag  = flag.String("c", "", "(optional) -c Path to cert chain")
 	certPrivKeyFlag    = flag.String("k", "", "(optional) -k Path to cert private key")
 	isTLS              = false
+	logFileMutex	   = sync.Mutex{}
 )
 
 // Need to add an interceptor for the respoonse as well to log server responses.
@@ -120,6 +122,8 @@ func writeLogFileJson(logFileExists bool, logEntry RequestLog) error {
 		}
 		logSlice = append(logSlice, logEntry)
 		logJSON, _ := json.Marshal(logSlice)
+		logFileMutex.Lock()
+		defer logFileMutex.Unlock()
 		err = ioutil.WriteFile(*logFileFlag, logJSON, 0644)
 		if err != nil {
 			return err
@@ -131,6 +135,8 @@ func writeLogFileJson(logFileExists bool, logEntry RequestLog) error {
 		if err != nil {
 			return err
 		}
+		logFileMutex.Lock()
+		defer logFileMutex.Unlock()
 		err = ioutil.WriteFile(*logFileFlag, logJSON, 0644)
 		if err != nil {
 			return err
