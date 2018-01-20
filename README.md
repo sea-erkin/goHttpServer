@@ -6,7 +6,7 @@ Supports logging directly to JSON.
 ```
   Usage of ./goHttpServer:
   -p string
-    -p Port to listen on. Kinda optional, will use 80 if not provided
+    Port to listen on. Kinda optional, will use 80 if not provided
   -c string
     (optional) -c Path to cert chain
   -d string
