@@ -94,6 +94,8 @@ func writeLog(requestLog RequestLog) error {
 		}
 
 		if *logJSON {
+			logFileMutex.Lock()
+			defer logFileMutex.Unlock()
 			err := writeLogFileJson(logFileExists, requestLog)
 			if err != nil {
 				return err
@@ -122,8 +124,6 @@ func writeLogFileJson(logFileExists bool, logEntry RequestLog) error {
 		}
 		logSlice = append(logSlice, logEntry)
 		logJSON, _ := json.Marshal(logSlice)
-		logFileMutex.Lock()
-		defer logFileMutex.Unlock()
 		err = ioutil.WriteFile(*logFileFlag, logJSON, 0644)
 		if err != nil {
 			return err
@@ -135,8 +135,6 @@ func writeLogFileJson(logFileExists bool, logEntry RequestLog) error {
 		if err != nil {
 			return err
 		}
-		logFileMutex.Lock()
-		defer logFileMutex.Unlock()
 		err = ioutil.WriteFile(*logFileFlag, logJSON, 0644)
 		if err != nil {
 			return err
