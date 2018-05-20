@@ -112,26 +112,27 @@ func writeLog(requestLog RequestLog) error {
 
 func writeLogFileJson(logFileExists bool, logEntry RequestLog) error {
 	if logFileExists {
-		logBytes, err := ioutil.ReadFile(*logFileFlag)
-		print(len(logBytes))
+	
+		logJSON, err := json.Marshal(logEntry)
 		if err != nil {
 			return err
 		}
-		var logSlice = []RequestLog{}
-		err = json.Unmarshal(logBytes, &logSlice)
+	
+		f, err := os.OpenFile(*logFileFlag, os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
-			return err
+    			return err
 		}
-		logSlice = append(logSlice, logEntry)
-		logJSON, _ := json.Marshal(logSlice)
-		err = ioutil.WriteFile(*logFileFlag, logJSON, 0644)
-		if err != nil {
-			return err
+		defer f.Close()
+
+		if _, err = f.WriteString(string(logJSON)+"\n"); err != nil {
+    			return err
 		}
+		
+		return nil
+
 	} else {
 		// write log slice json
-		var logSlice = []RequestLog{logEntry}
-		logJSON, err := json.Marshal(logSlice)
+		logJSON, err := json.Marshal(logEntry)
 		if err != nil {
 			return err
 		}
