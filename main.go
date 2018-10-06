@@ -6,12 +6,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 var (
@@ -24,10 +24,8 @@ var (
 	certChainPathFlag  = flag.String("c", "", "(optional) -c Path to cert chain")
 	certPrivKeyFlag    = flag.String("k", "", "(optional) -k Path to cert private key")
 	isTLS              = false
-	logFileMutex	   = sync.Mutex{}
+	logFileMutex       = sync.Mutex{}
 )
-
-// Need to add an interceptor for the respoonse as well to log server responses.
 
 func main() {
 
@@ -47,6 +45,9 @@ func main() {
 
 func logHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		o := &responseObserver{ResponseWriter: w}
+		handler.ServeHTTP(o, r)
+
 		requestLog := RequestLog{
 			RemoteAddr: r.RemoteAddr,
 			URL:        r.URL.String(),
@@ -55,15 +56,20 @@ func logHandler(handler http.Handler) http.Handler {
 			Method:     r.Method,
 			RequestURI: r.RequestURI,
 			Protocol:   r.Proto,
+			Status:     o.status,
+			Written:    o.written,
+			DateTime:   time.Now().UnixNano() / 1000000,
 		}
+
 		err := writeLog(requestLog)
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		if *logFileFlag == "" {
-			log.Printf("%s %s %s %s %s %s %s", requestLog.RemoteAddr, requestLog.URL, requestLog.UserAgent, requestLog.Referer, requestLog.Method, requestLog.RequestURI, requestLog.Protocol)
+			log.Printf("%s %s %s %s %s %s %s %s %s %s", requestLog.RemoteAddr, requestLog.URL, requestLog.UserAgent, requestLog.Referer, requestLog.Method, requestLog.RequestURI, requestLog.Protocol, requestLog.Status, requestLog.Written, requestLog.DateTime)
 		}
-		handler.ServeHTTP(w, r)
+
 	})
 }
 
@@ -111,35 +117,17 @@ func writeLog(requestLog RequestLog) error {
 }
 
 func writeLogFileJson(logFileExists bool, logEntry RequestLog) error {
-	if logFileExists {
-	
-		logJSON, err := json.Marshal(logEntry)
-		if err != nil {
-			return err
-		}
-	
-		f, err := os.OpenFile(*logFileFlag, os.O_APPEND|os.O_WRONLY, 0644)
-		if err != nil {
-    			return err
-		}
-		defer f.Close()
-
-		if _, err = f.WriteString(string(logJSON)+"\n"); err != nil {
-    			return err
-		}
-		
-		return nil
-
-	} else {
-		// write log slice json
-		logJSON, err := json.Marshal(logEntry)
-		if err != nil {
-			return err
-		}
-		err = ioutil.WriteFile(*logFileFlag, logJSON, 0644)
-		if err != nil {
-			return err
-		}
+	logJSON, err := json.Marshal(logEntry)
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(*logFileFlag, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if _, err = f.WriteString(string(logJSON) + "\n"); err != nil {
+		return err
 	}
 	return nil
 }
@@ -200,4 +188,33 @@ type RequestLog struct {
 	Method     string
 	RequestURI string
 	Protocol   string
+	Status     int
+	Written    int64
+	DateTime   int64
+}
+
+// https://gist.github.com/blixt/01d6bdf8aa8ae57d5c72c1907b6db670
+type responseObserver struct {
+	http.ResponseWriter
+	status      int
+	written     int64
+	wroteHeader bool
+}
+
+func (o *responseObserver) Write(p []byte) (n int, err error) {
+	if !o.wroteHeader {
+		o.WriteHeader(http.StatusOK)
+	}
+	n, err = o.ResponseWriter.Write(p)
+	o.written += int64(n)
+	return
+}
+
+func (o *responseObserver) WriteHeader(code int) {
+	o.ResponseWriter.WriteHeader(code)
+	if o.wroteHeader {
+		return
+	}
+	o.wroteHeader = true
+	o.status = code
 }
