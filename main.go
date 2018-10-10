@@ -121,7 +121,7 @@ func writeLogFileJson(logFileExists bool, logEntry RequestLog) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(*logFileFlag, os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(*logFileFlag, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
