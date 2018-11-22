@@ -45,8 +45,14 @@ func main() {
 
 func logHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		startTime := time.Now()
+
 		o := &responseObserver{ResponseWriter: w}
 		handler.ServeHTTP(o, r)
+
+		time.Sleep(time.Millisecond * 32)
+
+		duration := time.Now().Sub(startTime)
 
 		requestLog := RequestLog{
 			RemoteAddr: r.RemoteAddr,
@@ -58,7 +64,8 @@ func logHandler(handler http.Handler) http.Handler {
 			Protocol:   r.Proto,
 			Status:     o.status,
 			Written:    o.written,
-			DateTime:   time.Now().UnixNano() / 1000000,
+			DateTime:   time.Now().UnixNano() / 1e6,
+			TimeTaken:  duration.Nanoseconds() / 1e6,
 		}
 
 		err := writeLog(requestLog)
@@ -191,6 +198,7 @@ type RequestLog struct {
 	Status     int
 	Written    int64
 	DateTime   int64
+	TimeTaken  int64
 }
 
 // https://gist.github.com/blixt/01d6bdf8aa8ae57d5c72c1907b6db670
