@@ -48,9 +48,8 @@ func logHandler(handler http.Handler) http.Handler {
 		startTime := time.Now()
 
 		o := &responseObserver{ResponseWriter: w}
-		handler.ServeHTTP(o, r)
 
-		time.Sleep(time.Millisecond * 32)
+		handler.ServeHTTP(o, r)
 
 		duration := time.Now().Sub(startTime)
 
